@@ -13,3 +13,36 @@ library(tidyverse)
 library(rvest)
 ```
 
+Problem 2
+
+
+```{r}
+#Load data raw data
+homocide_raw = read_csv("data/homicide-data.csv") %>% 
+  janitor::clean_names()
+
+#Visualize first 8 rows
+head(homocide_raw, 8) # view first 8 rows of tidied data
+```
+
+This problem focuses on the `Homocide-data.csv` that The Washington Post gathered in 50 large U.S. cities and made available through GitHub. The raw data comprises `r dim(homocide_raw)`observations. The data included the geographical location of the homicide, whether an arrest was made, and, in most cases, basic demographic information about each victim. In total, the dataset contains 12 variables: `r ls(homocide_raw)`. Interestingly, the first and last names of the victims are included in the data, as well as the exact location of the homocide (lat and log). 
+
+In the code chuck below, we create a `city_state variable` (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides per city (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+
+```{r}
+#Clean and arrange variables
+
+homocide_clean = homocide_raw %>% 
+  mutate(.data = ., city_state = str_c(city, ", " ,state)) %>% 
+  select(-city, -state) %>% 
+  mutate(
+    disposition = if_else(disposition %in% c("Closed without arrest", "Open/No arrest"), "unsolved_homicides", "homicides") 
+  )
+
+# Summarize by city_sate
+
+homicide_cities = homocide_clean %>% 
+  group_by(city_state, disposition) %>% 
+  summarize(n_obs = n())  
+```
+
