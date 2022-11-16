@@ -1,0 +1,15 @@
+---
+title: "p8105_hw5_av2718"
+author: "Angelica Vina Albarracin"
+date: "2022-11-16"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE, message = FALSE)
+
+library(dplyr)
+library(tidyverse)
+library(rvest)
+```
+
