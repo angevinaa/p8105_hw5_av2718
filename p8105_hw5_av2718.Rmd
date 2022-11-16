@@ -12,8 +12,6 @@ library(dplyr)
 library(tidyverse)
 library(rvest)
 
-theme_set(theme_minimal())
-
 ```
 
 Problem 2
@@ -25,7 +23,7 @@ homicide_raw = read_csv("data/homicide-data.csv") %>%
   janitor::clean_names()
 
 #Visualize first 8 rows
-head(homicide_raw, 8) # view first 8 rows of tidied data
+head(homicide_raw, 8) # view first 8 rows of raw data
 ```
 
 This problem focuses on the `Homicide-data.csv` that The Washington Post gathered in 50 large U.S. cities and made available through GitHub. The raw data comprises `r dim(homicide_raw)`observations. The data included the geographical location of the homicide, whether an arrest was made, and, in most cases, basic demographic information about each victim. In total, the dataset contains 12 variables: `r ls(homicide_raw)`. Interestingly, the first and last names of the victims are included in the data, as well as the exact location of the homicide (lat and log). 
@@ -54,7 +52,7 @@ homicide_cities = pivot_wider(
   values_from = "n_obs") 
 homicide_cities[is.na(homicide_cities)]<- 0 #Change NA values to 0
 
-#Add column with total number of homocides
+#Add column with total number of homicides
 
 homicide_cities = 
   mutate(homicide_cities,
@@ -101,7 +99,7 @@ func_prop.test = function(homicide_cities){
 prop_test_cities
 }
 
-#Extract proportion of unsolved homicides and CIs for each
+#Extract proportion of unsolved homicides and CIs for each city
 
 prop_homicides = homicide_cities %>% 
   nest(data = unsolved_homicides:total_homicides) %>% 
@@ -117,6 +115,7 @@ head(prop_homicides, 3) # view first 8 rows of tidied data
 
 #### Proportion of Unsolved Homicides in US cities
 
+In the code chunk below, we use our new `prop_homicides` data frame to visualize the proportion of unsolved homicides in each US city. The plot shows that Chicago has the largest proportion of unsolved homicides among US cities, followed by Baltimore and New Orleans. 
 
 ```{r}
 
@@ -126,7 +125,7 @@ plot_homicides = prop_homicides %>%
   ggplot(aes( y = estimate, x = city_state)) +
   geom_point(color = 4) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + # add error bars based on CIs 
-  labs(title = "Proportion of Unsolved Homicides in Largest US Cities", 
+  labs(title = "Proportion of Unsolved Homicides in US Cities", 
          x = "US Cities", 
          y = "Proportion of Unsolved Homicides")+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
