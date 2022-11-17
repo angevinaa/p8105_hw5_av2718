@@ -3,6 +3,7 @@ title: "p8105_hw5_av2718"
 author: "Angelica Vina Albarracin"
 date: "2022-11-16"
 output: github_document
+
 ---
 
 ```{r setup, include=FALSE}
@@ -14,8 +15,7 @@ library(rvest)
 
 ```
 
-Problem 2
-
+# Problem 2
 
 ```{r}
 #Load data raw data
@@ -26,9 +26,9 @@ homicide_raw = read_csv("data/homicide-data.csv") %>%
 head(homicide_raw, 8) # view first 8 rows of raw data
 ```
 
-This problem focuses on the `Homicide-data.csv` that The Washington Post gathered in 50 large U.S. cities and made available through GitHub. The raw data comprises `r dim(homicide_raw)`observations. The data included the geographical location of the homicide, whether an arrest was made, and, in most cases, basic demographic information about each victim. In total, the dataset contains 12 variables: `r ls(homicide_raw)`. Interestingly, the first and last names of the victims are included in the data, as well as the exact location of the homicide (lat and log). 
+This problem focuses on the `Homicide-data.csv` that The Washington Post gathered in 50 large U.S. cities and made available through GitHub. The raw data comprises `r dim(homicide_raw)`observations. The data included the geographical location of the homicide, whether an arrest was made, and, in most cases, basic demographic information about each victim. In total, the dataset contains 12 variables: `r ls(homicide_raw)`. Interestingly, the first and last names of the victims are included in the data, as well as the exact location of the homicide (lat and log).
 
-In the code chunk below, we create a `city_state variable` (e.g., “Baltimore, MD”) and then summarize within cities to obtain the number of homicides and the number of unsolved homicides per city (“Closed without arrest” or “Open/No arrest”). Then, we calculate the total number of homicides per city by adding a new column to the resulting dataset.
+In the code chunk below, we create a `city_state variable` (e.g., "Baltimore, MD") and then summarize within cities to obtain the number of homicides and the number of unsolved homicides per city ("Closed without arrest" or "Open/No arrest"). Then, we calculate the total number of homicides per city by adding a new column to the resulting dataset.
 
 ```{r}
 #Clean and arrange raw variables
@@ -64,7 +64,7 @@ head(homicide_cities, 8) # view first 8 rows of tidied data
 
 ```
 
-For the city of Baltimore, MD, in the code chunk below, we use the `propw.test`  function to estimate the proportion of unsolved homicides. Then and apply the `broom::tidy` function from the broom package to constructs a `tibble` that summarizes the findings.
+For the city of Baltimore, MD, in the code chunk below, we use the `propw.test` function to estimate the proportion of unsolved homicides. Then and apply the `broom::tidy` function from the broom package to constructs a `tibble` that summarizes the findings.
 
 ```{r}
 #Filter Baltimore data
@@ -82,9 +82,10 @@ prop_test = prop.test(
 
 prop_test
 ```
+
 *Proportion of homicides in Baltimore:* As reported above, the estimate proportion of unsolved homicides in Baltimore city is `r pull(prop_test, estimate)`, with a confidence interval between `r pull(prop_test, conf.low)` and `r pull(prop_test, conf.high)`.
 
-Lastly, we run a `prop.test` for each city and extract the proportion of unsolved homicides and the confidence interval for each. To do this, we create a `func_prop.test' that we then apply to the entire data frame.  
+Lastly, we run a `prop.test` for each city and extract the proportion of unsolved homicides and the confidence interval for each. To do this, we create a \`func_prop.test' function that we then apply to the entire data frame.
 
 ```{r}
 #Create prop.test function
@@ -109,15 +110,16 @@ prop_homicides = homicide_cities %>%
 
 #Visualize first 3 rows of results
 
-head(prop_homicides, 3) # view first 8 rows of tidied data
+head(prop_homicides, 3) 
 
 ```
 
 #### Proportion of Unsolved Homicides in US cities
 
-In the code chunk below, we use our new `prop_homicides` data frame to visualize the proportion of unsolved homicides in each US city. The plot shows that Chicago has the largest proportion of unsolved homicides among US cities, followed by Baltimore and New Orleans. 
+In the code chunk below, we use our new `prop_homicides` data frame to visualize the proportion of unsolved homicides in each US city. The plot shows that Chicago has the largest proportion of unsolved homicides among US cities, followed by Baltimore and New Orleans. Tulsa has the lowest proportion of unsolved homicides, but the data is unreliable as only one homicide was reported.
 
 ```{r}
+# Create plot
 
 plot_homicides = prop_homicides %>% 
   select(city_state, estimate, conf.low, conf.high) %>%
@@ -143,5 +145,129 @@ plot_homicides = prop_homicides %>%
 ggsave("Homicides_US.Cities.png", plot = last_plot())
        
 ```
+
+# Problem 3
+
+In this problem, we will conduct a simulation to explore power (aka. the likelihood of detecting a true effect if there is one) in a one-sample t-test. The one-sample t-test is used to compare the differences between sample means. 
+
+*Step 1:*
+
+Then we will generate *5000 datasets* from the normal distribution: *x∼Normal[μ,σ]*
+
+First, we will write our model function and predefine the following elements: 
+
+*Fix n=30*
+*Fix σ=5*
+
+```{r}
+
+func_t.test = function(n = 30, mu, sigma = 5) { #predefine constants
+  random_data = tibble(
+    x = rnorm(n, mean = mu, sd = sigma))  #produce n rvs for normal distribution
+  
+ broom::tidy(t.test(random_data, conf.level = 0.95)) #perform t.test and clean output
+}
+
 ```
+
+*Step 2:*
+
+Now we will run the simulation for *mean={0,1,2,3,4,5,6}*:
+
+```{r}
+power_data =
+  expand.grid(
+    sample_size = 30,
+    mu = c(0,1,2,3,4,5,6),  # set mu values 
+    iter = 1:5000
+  ) %>% 
+  mutate(
+   test_results = map2(.x = sample_size, .y = mu, ~ func_t.test(n = .x, mu =.y))
+  ) %>% 
+  unnest(test_results) 
+
+#Visualize first 3 rows of results
+
+head(power_data, 8)
+```
+
+*Step 3:*
+
+Now we have generated the data, we will make a plot showing the proportion of times the null hypothesis was rejected (the power of the test):
+
+```{r}
+# Create plot
+
+power_plot = power_data %>% 
+  group_by(mu) %>% 
+  filter(p.value < 0.05) %>% #Null hypothesis rejected
+  summarize(proportion = n()) %>% 
+  ggplot(aes(x = mu, y = proportion/5000)) +
+  geom_line(color = 2) +
+  scale_x_continuous(breaks = 0:6) +
+  labs(x = "True value of mu",
+       y = "Power of the test",
+       title = "Association Between Effect Size and Power")
+  
+  power_plot
+  
+  ggsave("power_plot.png", plot = last_plot())
+```
+
+*Association Between Effect Size and Power*: In the plot, we can see that as the true mean increases, so does the power of the test, as the probability of correctly rejecting the null hypothesis increases. The power of the test gets close enough to 1 when mean= 4, meaning that effect size/ difference between means is big enough to detect a true effect and reject the null hypothesis with confidence.  
+
+Lastly, we make a plot comparing the average expected mean vs. the true mean, for all the samples generated in our simulation and, for only in samples for which the null was rejected:
+
+```{r}
+#estimate of mu for all samples
+
+power_average = power_data %>% 
+  group_by(mu) %>% 
+  summarize(mean_est = mean(estimate)) 
+
+#estimate of mu when null is rejected
+
+power_average2 = power_data %>% 
+  filter(p.value < 0.05) %>% 
+  group_by(mu) %>% 
+  summarize(mean_est = mean(estimate)) 
+
+# Create comparison plot
+
+plot1 = power_average %>% 
+  ggplot(aes(x = mu, y = mean_est)) +
+  geom_line(color = 2) +
+  labs(
+    title = "All Samples",
+    x = "True value of mu",
+    y = "Average estimate of mu"
+  )
+plot2 = power_average2 %>%
+  ggplot(aes(x = mu, y = mean_est))+
+  geom_line(color = 2)+
+  labs(
+    title = " Null was Rejected",
+    x = "True value of mu",
+    y = "Average estimate of mu"
+  )
+
+library(patchwork)
+
+mu_plot = 
+  guide_area() + (plot1 + plot2) +   # Combine plots using patchwork package
+  plot_layout(guides = "keep",
+              nrow = 2, heights = c(1,10)) +
+  plot_annotation(title = "Association Between True Mean and Estimated Mean") &
+  theme(plot.title = element_text(size = 14)) +
+  theme(legend.position = "bottom") +
+  theme(legend.title = element_text(size = 8)) +
+  theme(legend.text = element_text(size = 6)) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+mu_plot
+ggsave("mu_plot.png", plot = last_plot())
+```
+
+
+*Association Between True Mean and Estimated Mean:* As we can see in the plot, the average mean across tests for which the null is rejected is approximately equal to the true value of mu. This is because as the true value of mu increases, the test's power increases, aka., the probability of correctly rejecting the null hypothesis increases.
 
